@@ -1,6 +1,6 @@
-# Reusable Spring Boot 4 Error Handler
+# Reusable Spring Boot 3 Error Handler
 
-Reusable Spring Boot 4 auto-configuration that turns exceptions into structured
+Reusable Spring Boot 3 auto-configuration that turns exceptions into structured
 [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457) responses and
 propagates the Micrometer trace ID to every response.
 
@@ -39,11 +39,11 @@ every failure mode your API can encounter:
 
 | Dependency                                                                                                  | Notes                                                          |
 |-------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
-| Spring Boot 4.x                                                                                             | Tested on 4.0.6                                                |
-| `spring-boot-starter-webmvc`                                                                                | Required                                                       |
-| `spring-boot-starter-validation`                                                                            | Required for `ValidationExceptionHandler`                      |
-| `spring-boot-starter-data-jpa`                                                                              | Required for `DataExceptionHandler`                            |
-| `spring-boot-starter-actuator` + `spring-boot-micrometer-tracing-brave` + `micrometer-tracing-bridge-brave` | Optional — enables `traceId` in bodies and `X-Trace-Id` header |
+| Spring Boot 3.x                                                                        | Tested on 3.5.14                                               |
+| `spring-boot-starter-web`                                                              | Required                                                       |
+| `spring-boot-starter-validation`                                                       | Required for `ValidationExceptionHandler`                      |
+| `spring-boot-starter-data-jpa`                                                         | Required for `DataExceptionHandler`                            |
+| `spring-boot-starter-actuator` + `micrometer-tracing-bridge-brave`                    | Optional — enables `traceId` in bodies and `X-Trace-Id` header |
 
 ## Adding the library to a project
 
@@ -63,7 +63,7 @@ provided the package is within your application's scan root.
 ### `JsonExceptionHandler` — 400 Bad Request
 
 Handles `HttpMessageNotReadableException` (Jackson deserialization failures). Maps the
-Jackson 3 cause chain to a structured response:
+Jackson 2 cause chain to a structured response:
 
 | Cause                             | `code`                   | Extra fields                                          |
 |-----------------------------------|--------------------------|-------------------------------------------------------|
@@ -314,10 +314,6 @@ per-request locale, supply a locale-aware `MessageInterpolator` in your validato
   <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
-  </dependency>
-  <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-micrometer-tracing-brave</artifactId>
   </dependency>
   <dependency>
       <groupId>io.micrometer</groupId>

@@ -8,7 +8,7 @@ The package `com.example.demo.error` contains classes that are designed to exerc
 
 ## Stack
 
-- **Spring Boot 4.0.6**, Java 25, Maven 3.9
+- **Spring Boot 3.5.14**, Java 25, Maven 3.9
 - **Spring Web MVC** + **Spring Data JPA** + **Spring Validation** + **PostgreSQL**
 - **Testcontainers** for integration tests (spins up a real `postgres:latest` container)
 
@@ -28,19 +28,19 @@ The package `com.example.demo.error` contains classes that are designed to exerc
 ./mvnw test
 ```
 
-## Jackson 3 API (Spring Boot 4 ships Jackson 3.x under `tools.jackson.*`)
+## Jackson 2 API (Spring Boot 3 ships Jackson 2.x under `com.fasterxml.jackson.*`)
 
-- Package: `tools.jackson.core.*` / `tools.jackson.databind.*` (not `com.fasterxml.jackson.*`)
-- `JsonParseException` → `tools.jackson.core.exc.StreamReadException`
-- `JsonMappingException` → `tools.jackson.databind.DatabindException`
-- `JsonMappingException.Reference` → `tools.jackson.core.JacksonException.Reference`
-- `Reference.getFieldName()` → `Reference.getPropertyName()`
-- `JsonLocation` → `tools.jackson.core.TokenStreamLocation`
+- Package: `com.fasterxml.jackson.core.*` / `com.fasterxml.jackson.databind.*`
+- `StreamReadException` → `com.fasterxml.jackson.core.exc.StreamReadException`
+- `JsonMappingException` → `com.fasterxml.jackson.databind.JsonMappingException`
+- `JsonMappingException.Reference` — use `ref.getFieldName()` (renamed to `getPropertyName()` in Jackson 3)
+- `InputCoercionException` is wrapped inside `JsonMappingException` when overflow occurs during POJO mapping — use a cause-chain walk to find it
+- `JsonLocation` → `com.fasterxml.jackson.core.JsonLocation`
 
 ## Testing
 
 All IT tests: `@SpringBootTest + @AutoConfigureMockMvc + @Import(TestcontainersConfiguration.class)`.
 
-`@AutoConfigureMockMvc` is in `org.springframework.boot.webmvc.test.autoconfigure` (moved in Spring Boot 4).
+`@AutoConfigureMockMvc` is in `org.springframework.boot.test.autoconfigure.web.servlet` (moved to `org.springframework.boot.webmvc.test.autoconfigure` in Spring Boot 4).
 
 Surefire picks up both `*Tests.java` and `*IT.java`, so `./mvnw test` runs everything. Docker must be available.
