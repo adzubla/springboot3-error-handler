@@ -1,5 +1,11 @@
 package com.example.demo.error;
 
+import com.fasterxml.jackson.core.exc.InputCoercionException;
+import com.fasterxml.jackson.core.exc.StreamReadException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
@@ -12,19 +18,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import tools.jackson.core.JacksonException;
-import tools.jackson.core.exc.InputCoercionException;
-import tools.jackson.core.exc.StreamReadException;
-import tools.jackson.databind.exc.InvalidFormatException;
-import tools.jackson.databind.exc.MismatchedInputException;
-import tools.jackson.databind.exc.UnrecognizedPropertyException;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Translates Jackson 3 deserialization failures into RFC 9457
+ * Translates Jackson 2 deserialization failures into RFC 9457
  * {@link org.springframework.http.ProblemDetail} responses with HTTP 400.
  *
  * <p>Intercepts {@link org.springframework.http.converter.HttpMessageNotReadableException} and
@@ -41,8 +41,7 @@ import java.util.Map;
  *   <li>Anything else → {@code MALFORMED_REQUEST_BODY}
  * </ul>
  *
- * <p><b>Jackson 3 note:</b> uses the {@code tools.jackson.*} package namespace shipped with
- * Spring Boot 4, not the legacy {@code com.fasterxml.jackson.*} packages.
+ * <p>Uses the {@code com.fasterxml.jackson.*} package namespace shipped with Spring Boot 3.
  */
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -53,14 +52,14 @@ public class JsonExceptionHandler {
     private final MessageSource messageSource;
 
     private static final Map<Class<?>, String> NUMERIC_RANGES = Map.of(
-            byte.class,    "[" + Byte.MIN_VALUE    + ", " + Byte.MAX_VALUE    + "]",
-            Byte.class,    "[" + Byte.MIN_VALUE    + ", " + Byte.MAX_VALUE    + "]",
-            short.class,   "[" + Short.MIN_VALUE   + ", " + Short.MAX_VALUE   + "]",
-            Short.class,   "[" + Short.MIN_VALUE   + ", " + Short.MAX_VALUE   + "]",
-            int.class,     "[" + Integer.MIN_VALUE + ", " + Integer.MAX_VALUE + "]",
+            byte.class, "[" + Byte.MIN_VALUE + ", " + Byte.MAX_VALUE + "]",
+            Byte.class, "[" + Byte.MIN_VALUE + ", " + Byte.MAX_VALUE + "]",
+            short.class, "[" + Short.MIN_VALUE + ", " + Short.MAX_VALUE + "]",
+            Short.class, "[" + Short.MIN_VALUE + ", " + Short.MAX_VALUE + "]",
+            int.class, "[" + Integer.MIN_VALUE + ", " + Integer.MAX_VALUE + "]",
             Integer.class, "[" + Integer.MIN_VALUE + ", " + Integer.MAX_VALUE + "]",
-            long.class,    "[" + Long.MIN_VALUE    + ", " + Long.MAX_VALUE    + "]",
-            Long.class,    "[" + Long.MIN_VALUE    + ", " + Long.MAX_VALUE    + "]"
+            long.class, "[" + Long.MIN_VALUE + ", " + Long.MAX_VALUE + "]",
+            Long.class, "[" + Long.MIN_VALUE + ", " + Long.MAX_VALUE + "]"
     );
 
     public JsonExceptionHandler(MessageSource messageSource) {
@@ -114,7 +113,9 @@ public class JsonExceptionHandler {
             log.trace("Stack trace:", mie);
             return badRequest(mismatchedInput(mie).toProblemDetail());
         }
-        if (cause instanceof InputCoercionException ice) {
+        // In Jackson 2, InputCoercionException is wrapped inside JsonMappingException
+        var ice = findCause(cause, InputCoercionException.class);
+        if (ice != null) {
             log.debug("Integer overflow: {}", ice.getMessage());
             log.trace("Stack trace:", ice);
             return badRequest(coercionError(ice).toProblemDetail());
@@ -209,14 +210,14 @@ public class JsonExceptionHandler {
                 path, null, typeName, null, null, null, null, ErrorCode.TYPE_MISMATCH);
     }
 
-    private static String jsonPath(List<JacksonException.Reference> refs) {
+    private static String jsonPath(List<JsonMappingException.Reference> refs) {
         if (refs == null || refs.isEmpty()) return "$";
         var sb = new StringBuilder("$");
         for (var ref : refs) {
             if (ref.getIndex() >= 0) {
                 sb.append('[').append(ref.getIndex()).append(']');
-            } else if (ref.getPropertyName() != null) {
-                sb.append('.').append(ref.getPropertyName());
+            } else if (ref.getFieldName() != null) {
+                sb.append('.').append(ref.getFieldName());
             }
         }
         return sb.toString();
@@ -227,6 +228,15 @@ public class JsonExceptionHandler {
         if (List.class.isAssignableFrom(type) || type.isArray()) return msg("error.friendly-type.array");
         if (Map.class.isAssignableFrom(type)) return msg("error.friendly-type.object");
         return type.getSimpleName();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> T findCause(Throwable t, Class<T> type) {
+        while (t != null) {
+            if (type.isInstance(t)) return (T) t;
+            t = t.getCause();
+        }
+        return null;
     }
 
     private static ResponseEntity<ProblemDetail> badRequest(ProblemDetail problem) {

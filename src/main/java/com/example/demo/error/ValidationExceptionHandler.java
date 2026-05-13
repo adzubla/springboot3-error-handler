@@ -100,11 +100,11 @@ public class ValidationExceptionHandler {
 
     private ResponseEntity<ProblemDetail> unprocessable(List<Map<String, String>> violations) {
         var locale = LocaleContextHolder.getLocale();
-        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT,
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY,
                 messageSource.getMessage("error.validation-failed.detail", null, locale));
         problem.setTitle(messageSource.getMessage("error.validation-failed.title", null, locale));
         problem.setProperty("code", ErrorCode.VALIDATION_FAILED.name());
         problem.setProperty("violations", violations);
-        return ResponseEntity.unprocessableContent().body(problem);
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
     }
 }
